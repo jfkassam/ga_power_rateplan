@@ -1,1 +1,7 @@
-/target
+usage.csv
+*.xlsx
+*.xls
+node_modules/
+.DS_Store
+target/
+**/*.log

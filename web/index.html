@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GA Power Rate Plan Calculator</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>GA Power Rate Analyzer</h1>
+            <p class="subtitle">Find the best electricity plan for your usage</p>
+            <p class="subtitle" style="font-size: 0.8rem; margin-top: 0.5rem;">Rates effective Jan 2025</p>
+        </header>
+
+        <details class="info-section">
+            <summary>How to get your usage data & Rate Plan Info</summary>
+            <div class="info-content">
+                <div class="guide-steps">
+                    <h3>How to export your data from Georgia Power:</h3>
+                    <ol>
+                        <li>
+                            <p>Log in to your Georgia Power account and go to <strong>Billing and Payments</strong> >
+                                <strong>Usage</strong>.</p>
+                            <img src="images/step1_billing.png" alt="Step 1: Navigate to Usage" loading="lazy">
+                        </li>
+                        <li>
+                            <p>Select <strong>Hourly</strong> view and toggle to <strong>Table</strong> mode.</p>
+                            <img src="images/step2_hourly.png" alt="Step 2: Select Hourly and Table" loading="lazy">
+                        </li>
+                        <li>
+                            <p>Click the <strong>Export</strong> button below the table.</p>
+                            <img src="images/step3_export.png" alt="Step 3: Click Export" loading="lazy">
+                        </li>
+                        <li>
+                            <p>Select <strong>Custom Date Range</strong>. Go back at least 1 year (up to 2 years) for
+                                the best results. Click <strong>Export</strong>.</p>
+                            <img src="images/step4_date_range.png" alt="Step 4: Select Date Range" loading="lazy">
+                        </li>
+                    </ol>
+                </div>
+
+                <div class="rate-links">
+                    <h3>Reference Rate Plans (Jan 2025):</h3>
+                    <ul>
+                        <li><a href="https://www.georgiapower.com/content/dam/georgia-power/pdfs/residential-service/residential-rates/R-30.pdf"
+                                target="_blank">Standard Residential (R-30)</a></li>
+                        <li><a href="https://www.georgiapower.com/content/dam/georgia-power/pdfs/residential-service/residential-rates/TOU-REO-18.pdf"
+                                target="_blank">TOU - Residential Energy Only (TOU-REO-18)</a></li>
+                        <li><a href="https://www.georgiapower.com/content/dam/georgia-power/pdfs/residential-service/residential-rates/TOU-OA-14.pdf"
+                                target="_blank">TOU - Overnight Advantage (TOU-OA-14)</a></li>
+                        <li><a href="https://www.georgiapower.com/content/dam/georgia-power/pdfs/residential-service/residential-rates/TOU-RD-11.pdf"
+                                target="_blank">TOU - Residential Demand (TOU-RD-11)</a></li>
+                    </ul>
+                </div>
+            </div>
+        </details>
+
+        <main>
+            <div class="upload-section" id="drop-zone">
+                <div class="upload-content">
+                    <svg class="upload-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    <h3>Drag & Drop Excel File here</h3>
+                    <p>or <span class="browse-link">browse files</span></p>
+                    <p class="file-hint">Supports GA Power usage export (.xlsx)</p>
+                </div>
+                <input type="file" id="file-input" accept=".xlsx,.xls" hidden>
+            </div>
+
+            <div id="error-message" class="error-message hidden"></div>
+
+            <div id="results-section" class="results-section hidden">
+                <div class="summary-card">
+                    <h2>Best Plan For You</h2>
+                    <div id="best-plan-name" class="best-plan-name">Calculating...</div>
+                    <div id="best-plan-savings" class="best-plan-savings"></div>
+                </div>
+
+                <div class="details-grid">
+                    <div class="plan-card" id="card-tou-reo">
+                        <h3>TOU-REO</h3>
+                        <div class="price" id="price-tou-reo">--</div>
+                        <div class="details">Residential Energy Only</div>
+                    </div>
+                    <div class="plan-card" id="card-tou-oa">
+                        <h3>TOU-OA</h3>
+                        <div class="price" id="price-tou-oa">--</div>
+                        <div class="details">Overnight Advantage</div>
+                    </div>
+                    <div class="plan-card" id="card-tou-rd">
+                        <h3>TOU-RD</h3>
+                        <div class="price" id="price-tou-rd">--</div>
+                        <div class="details">Residential Demand</div>
+                    </div>
+                    <div class="plan-card" id="card-r30">
+                        <h3>R-30</h3>
+                        <div class="price" id="price-r30">--</div>
+                        <div class="details">Standard Residential</div>
+                    </div>
+                </div>
+
+                <div class="data-stats">
+                    <h3>Data Analysis</h3>
+                    <p>Range: <span id="data-range">--</span></p>
+                    <p>Duration: <span id="data-duration">--</span> days</p>
+                    <p>Total Usage: <span id="total-usage">--</span> kWh</p>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="script.js"></script>
+</body>
+
+</html>
