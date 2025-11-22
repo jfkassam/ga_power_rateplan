@@ -250,6 +250,249 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         const billingDays = allDays.size;
 
+        // --- Costs (Base + FCR) * Tax ---
+
+        // 1. TOU-REO
+        const tou_reo_fixed = 0.4603 * billingDays;
+        const cost_reo_on = agg_tou_reo_on * 0.297868;
+        const cost_reo_off = agg_tou_reo_off * 0.076281;
+        const tou_reo_energy = cost_reo_on + cost_reo_off;
+        const tou_reo_total = (tou_reo_fixed + tou_reo_energy + total_fcr) * TAX_RATE;
+
+        // 2. TOU-OA
+        const tou_oa_fixed = 0.4603 * billingDays;
+        const cost_oa_on = agg_tou_oa_on * 0.297868;
+        const cost_oa_off = agg_tou_oa_off * 0.101676;
+        const cost_oa_super = agg_tou_oa_super * 0.021859;
+        const tou_oa_energy = cost_oa_on + cost_oa_off + cost_oa_super;
+        const tou_oa_total = (tou_oa_fixed + tou_oa_energy + total_fcr) * TAX_RATE;
+
+        // 3. TOU-RD
+        const tou_rd_fixed = 0.4603 * billingDays;
+        const cost_rd_on = agg_tou_reo_on * 0.142986;
+        const cost_rd_off = agg_tou_reo_off * 0.015288;
+        const tou_rd_energy = cost_rd_on + cost_rd_off;
+        let total_demand_charge = 0;
+        Object.values(monthlyUsage).forEach(m => {
+            total_demand_charge += m.maxDemand * 12.21;
+        });
+        const tou_rd_total = (tou_rd_fixed + tou_rd_energy + total_demand_charge + total_fcr) * TAX_RATE;
+
+        // 4. R-30
+        let r30_base_total = 0;
+        let cost_r30_summer_tier1 = 0;
+        let cost_r30_summer_tier2 = 0;
+        let cost_r30_summer_tier3 = 0;
+        let cost_r30_winter = 0;
+
+        Object.keys(monthlyUsage).forEach(key => {
+            const [year, month] = key.split('-').map(Number); // month is 1-based
+            const usage = monthlyUsage[key].total;
+            const days = monthlyUsage[key].days.size;
+
+            const fixed = 0.4603 * days;
+            let energyCost = 0;
+
+            if (month >= 6 && month <= 9) { // Summer
+                const tier1 = Math.min(usage, 650);
+                const tier2 = usage > 650 ? Math.min(usage - 650, 350) : 0;
+                const tier3 = usage > 1000 ? usage - 1000 : 0;
+
+                const c1 = tier1 * 0.086121;
+                const c2 = tier2 * 0.143047;
+                const c3 = tier3 * 0.148051;
+
+                cost_r30_summer_tier1 += c1;
+                cost_r30_summer_tier2 += c2;
+                cost_r30_summer_tier3 += c3;
+
+                energyCost = c1 + c2 + c3;
+            } else { // Winter
+                const cWinter = usage * 0.080602;
+                cost_r30_winter += cWinter;
+                energyCost = cWinter;
+            }
+            r30_base_total += fixed + energyCost;
+        });
+        const r30_total = (r30_base_total + total_fcr) * TAX_RATE;
+
+        // Display
+        displayResults({
+            tou_reo: {
+                total: tou_reo_total,
+                breakdown: {
+                    fixed: tou_reo_fixed,
+                    onPeak: cost_reo_on,
+                    offPeak: cost_reo_off,
+                    fcr: total_fcr,
+                    tax: tou_reo_total - (tou_reo_fixed + tou_reo_energy + total_fcr)
+                }
+            },
+            tou_oa: {
+                total: tou_oa_total,
+                breakdown: {
+                    fixed: tou_oa_fixed,
+                    onPeak: cost_oa_on,
+                    offPeak: cost_oa_off,
+                    superOffPeak: cost_oa_super,
+                    fcr: total_fcr,
+                    tax: tou_oa_total - (tou_oa_fixed + tou_oa_energy + total_fcr)
+                }
+            },
+            tou_rd: {
+                total: tou_rd_total,
+                breakdown: {
+                    fixed: tou_rd_fixed,
+                    onPeak: cost_rd_on,
+                    offPeak: cost_rd_off,
+                    demand: total_demand_charge,
+                    fcr: total_fcr,
+                    tax: tou_rd_total - (tou_rd_fixed + tou_rd_energy + total_demand_charge + total_fcr)
+                }
+            },
+            r30: {
+                total: r30_total,
+                breakdown: {
+                    fixed: 0.4603 * billingDays,
+                    summerTier1: cost_r30_summer_tier1,
+                    summerTier2: cost_r30_summer_tier2,
+                    summerTier3: cost_r30_summer_tier3,
+                    winter: cost_r30_winter,
+                    fcr: total_fcr,
+                    tax: r30_total - (r30_base_total + total_fcr)
+                }
+            },
+            stats: {
+                start: records[0].dt,
+                end: records[records.length - 1].dt,
+                duration: durationDays,
+                totalUsage: records.reduce((sum, r) => sum + r.kwh, 0),
+                note: note
+            }
+        });
+    }
+
+    function isOnPeak(dt) {
+        // Mon(1)..Fri(5) in JS? No, Sun=0, Mon=1...Sat=6.
+        // Rust: Mon=0..Fri=4.
+        // So JS: day >= 1 && day <= 5.
+        const month = dt.getMonth() + 1; // 1-12
+        const hour = dt.getHours();
+        const day = dt.getDay(); // 0=Sun, 1=Mon...
+
+        const isWeekday = day >= 1 && day <= 5;
+        const isSummer = month >= 6 && month <= 9;
+        const isPeakHour = hour >= 14 && hour < 19; // 14:00 - 18:59
+
+        return isWeekday && isSummer && isPeakHour;
+    }
+
+    function getTouOaPeriod(dt) {
+        if (isOnPeak(dt)) return 'on_peak';
+        const hour = dt.getHours();
+        if (hour >= 23 || hour < 7) return 'super_off_peak';
+        return 'off_peak';
+    }
+
+    function displayResults(results) {
+        resultsSection.classList.remove('hidden');
+
+        const plans = [
+            { id: 'tou-reo', name: 'TOU-REO', cost: results.tou_reo.total, breakdown: results.tou_reo.breakdown },
+            { id: 'tou-oa', name: 'TOU-OA', cost: results.tou_oa.total, breakdown: results.tou_oa.breakdown },
+            { id: 'tou-rd', name: 'TOU-RD', cost: results.tou_rd.total, breakdown: results.tou_rd.breakdown },
+            { id: 'r30', name: 'R-30', cost: results.r30.total, breakdown: results.r30.breakdown }
+        ];
+
+        // Sort by cost
+        plans.sort((a, b) => a.cost - b.cost);
+        const best = plans[0];
+
+        // Find R-30 cost for comparison
+        const r30Plan = plans.find(p => p.id === 'r30');
+        const r30Cost = r30Plan ? r30Plan.cost : 0;
+
+        // Update UI
+        document.getElementById('best-plan-name').textContent = best.name;
+
+        const savings = r30Cost - best.cost;
+        const savingsElement = document.getElementById('best-plan-savings');
+
+        if (best.id === 'r30') {
+            savingsElement.textContent = "The Standard Residential (R-30) plan is your best option.";
+            savingsElement.style.color = "var(--text-primary)";
+        } else if (savings > 0) {
+            savingsElement.textContent = `Save $${savings.toFixed(2)} compared to R-30 (Standard)`;
+            savingsElement.style.color = "var(--success-color)";
+        } else {
+            savingsElement.textContent = `Save $${savings.toFixed(2)} compared to R-30 (Standard)`;
+            savingsElement.style.color = "var(--success-color)";
+        }
+
+        plans.forEach(p => {
+            const card = document.getElementById(`card-${p.id}`);
+            document.getElementById(`price-${p.id}`).textContent = `$${p.cost.toFixed(2)}`;
+
+            // Highlight best
+            if (p.id === best.id) {
+                card.style.borderColor = 'var(--success-color)';
+                card.style.backgroundColor = 'rgba(34, 197, 94, 0.05)';
+            } else {
+                card.style.borderColor = 'var(--border-color)';
+                card.style.backgroundColor = 'var(--card-bg)';
+            }
+
+            // Add Breakdown
+            let breakdownHtml = `<div class="cost-breakdown">`;
+
+            // Energy / Demand Section (Min Height for Alignment)
+            breakdownHtml += `<div class="energy-section">`;
+
+            if (p.id === 'tou-reo') {
+                breakdownHtml += `<div class="breakdown-row"><span class="tooltip-label" title="Jun-Sep, M-F, 2-7PM (29.8¢/kWh)">On-Peak:</span><span>$${p.breakdown.onPeak.toFixed(2)}</span></div>`;
+                breakdownHtml += `<div class="breakdown-row"><span class="tooltip-label" title="All other times (7.6¢/kWh)">Off-Peak:</span><span>$${p.breakdown.offPeak.toFixed(2)}</span></div>`;
+            } else if (p.id === 'tou-oa') {
+                breakdownHtml += `<div class="breakdown-row"><span class="tooltip-label" title="Jun-Sep, M-F, 2-7PM (29.8¢/kWh)">On-Peak:</span><span>$${p.breakdown.onPeak.toFixed(2)}</span></div>`;
+                breakdownHtml += `<div class="breakdown-row"><span class="tooltip-label" title="Oct-May & Weekends (10.2¢/kWh)">Off-Peak:</span><span>$${p.breakdown.offPeak.toFixed(2)}</span></div>`;
+                breakdownHtml += `<div class="breakdown-row"><span class="tooltip-label" title="11PM - 7AM Daily (2.2¢/kWh)">Super Off-Peak:</span><span>$${p.breakdown.superOffPeak.toFixed(2)}</span></div>`;
+            } else if (p.id === 'tou-rd') {
+                breakdownHtml += `<div class="breakdown-row"><span class="tooltip-label" title="Jun-Sep, M-F, 2-7PM (14.3¢/kWh)">On-Peak:</span><span>$${p.breakdown.onPeak.toFixed(2)}</span></div>`;
+                breakdownHtml += `<div class="breakdown-row"><span class="tooltip-label" title="All other times (1.5¢/kWh)">Off-Peak:</span><span>$${p.breakdown.offPeak.toFixed(2)}</span></div>`;
+                breakdownHtml += `<div class="breakdown-row"><span class="tooltip-label" title="Highest 60-min usage ($12.21/kW)">Demand:</span><span>$${p.breakdown.demand.toFixed(2)}</span></div>`;
+            } else if (p.id === 'r30') {
+                if (p.breakdown.summerTier1 > 0) breakdownHtml += `<div class="breakdown-row"><span class="tooltip-label" title="Summer <650kWh (8.6¢/kWh)">Summer Tier 1:</span><span>$${p.breakdown.summerTier1.toFixed(2)}</span></div>`;
+                if (p.breakdown.summerTier2 > 0) breakdownHtml += `<div class="breakdown-row"><span class="tooltip-label" title="Summer 650-1000kWh (14.3¢/kWh)">Summer Tier 2:</span><span>$${p.breakdown.summerTier2.toFixed(2)}</span></div>`;
+                if (p.breakdown.summerTier3 > 0) breakdownHtml += `<div class="breakdown-row"><span class="tooltip-label" title="Summer >1000kWh (14.8¢/kWh)">Summer Tier 3:</span><span>$${p.breakdown.summerTier3.toFixed(2)}</span></div>`;
+                if (p.breakdown.winter > 0) breakdownHtml += `<div class="breakdown-row"><span class="tooltip-label" title="Oct-May All Usage (8.1¢/kWh)">Winter:</span><span>$${p.breakdown.winter.toFixed(2)}</span></div>`;
+            }
+
+            breakdownHtml += `</div>`; // End energy-section
+
+            // Separator
+            breakdownHtml += `<div class="breakdown-separator"></div>`;
+
+            // Riders & Fixed
+            breakdownHtml += `<div class="breakdown-row"><span>Fuel Recovery:</span><span>$${p.breakdown.fcr.toFixed(2)}</span></div>`;
+            breakdownHtml += `<div class="breakdown-row"><span class="tooltip-label" title="Basic Service Charge ($0.46/day)">Fixed ⓘ:</span><span>$${p.breakdown.fixed.toFixed(2)}</span></div>`;
+
+            // Taxes
+            breakdownHtml += `<div class="breakdown-row tax-row"><span>Taxes & Fees (12%):</span><span>$${p.breakdown.tax.toFixed(2)}</span></div>`;
+            breakdownHtml += `</div>`;
+
+            // Check if breakdown already exists to avoid duplicates
+            let existingBreakdown = card.querySelector('.cost-breakdown');
+            if (existingBreakdown) {
+                existingBreakdown.outerHTML = breakdownHtml;
+            } else {
+                card.insertAdjacentHTML('beforeend', breakdownHtml);
+            }
+        });
+
+        // Stats
+        document.getElementById('data-range').textContent = `${results.stats.start.toLocaleDateString()} - ${results.stats.end.toLocaleDateString()}`;
+        document.getElementById('data-duration').textContent = results.stats.duration.toFixed(0);
+        document.getElementById('total-usage').textContent = results.stats.totalUsage.toFixed(2);
+
         // Add note if present
         let noteEl = document.getElementById('data-note');
         if (!noteEl) {
