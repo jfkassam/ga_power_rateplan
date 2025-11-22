@@ -445,7 +445,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Add Breakdown
             let breakdownHtml = `<div class="cost-breakdown">`;
 
-            // Energy / Demand Section (Min Height for Alignment)
+            // Energy / Demand Section (Fixed Height for Alignment)
             breakdownHtml += `<div class="energy-section">`;
 
             if (p.id === 'tou-reo') {
@@ -472,8 +472,8 @@ document.addEventListener('DOMContentLoaded', () => {
             breakdownHtml += `<div class="breakdown-separator"></div>`;
 
             // Riders & Fixed
-            breakdownHtml += `<div class="breakdown-row"><span>Fuel Recovery:</span><span>$${p.breakdown.fcr.toFixed(2)}</span></div>`;
-            breakdownHtml += `<div class="breakdown-row"><span class="tooltip-label" title="Basic Service Charge ($0.46/day)">Fixed ⓘ:</span><span>$${p.breakdown.fixed.toFixed(2)}</span></div>`;
+            breakdownHtml += `<div class="breakdown-row"><span class="tooltip-label" title="Pass-through cost for fuel (Coal, Gas, Nuclear) ~4.3-4.6¢/kWh">Fuel Recovery:</span><span>$${p.breakdown.fcr.toFixed(2)}</span></div>`;
+            breakdownHtml += `<div class="breakdown-row"><span class="tooltip-label" title="Basic Service Charge ($0.46/day)">Fixed:</span><span>$${p.breakdown.fixed.toFixed(2)}</span></div>`;
 
             // Taxes
             breakdownHtml += `<div class="breakdown-row tax-row"><span>Taxes & Fees (12%):</span><span>$${p.breakdown.tax.toFixed(2)}</span></div>`;
