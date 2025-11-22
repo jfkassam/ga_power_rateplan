@@ -43,84 +43,64 @@
                             <p>Select <strong>Custom Date Range</strong>. Go back at least 1 year (up to 2 years) for
                                 the best results. Click <strong>Export</strong>.</p>
                             <img src="images/step4_date_range.png" alt="Step 4: Select Date Range" loading="lazy">
-                        </li>
-                    </ol>
-                </div>
+                            <div class="upload-section" id="drop-zone">
+                                <div class="upload-content">
+                                    <svg class="upload-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                        stroke-linejoin="round">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                        <polyline points="17 8 12 3 7 8"></polyline>
+                                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                                    </svg>
+                                    <h3>Drag & Drop Excel File here</h3>
+                                    <p>or <span class="browse-link">browse files</span></p>
+                                    <p class="file-hint">Supports GA Power usage export (.xlsx)</p>
+                                </div>
+                                <input type="file" id="file-input" accept=".xlsx,.xls" hidden>
+                            </div>
 
-                <div class="rate-links">
-                    <h3>Reference Rate Plans (Jan 2025):</h3>
-                    <ul>
-                        <li><a href="https://www.georgiapower.com/content/dam/georgia-power/pdfs/residential-service/residential-rates/R-30.pdf"
-                                target="_blank">Standard Residential (R-30)</a></li>
-                        <li><a href="https://www.georgiapower.com/content/dam/georgia-power/pdfs/residential-service/residential-rates/TOU-REO-18.pdf"
-                                target="_blank">TOU - Residential Energy Only (TOU-REO-18)</a></li>
-                        <li><a href="https://www.georgiapower.com/content/dam/georgia-power/pdfs/residential-service/residential-rates/TOU-OA-14.pdf"
-                                target="_blank">TOU - Overnight Advantage (TOU-OA-14)</a></li>
-                        <li><a href="https://www.georgiapower.com/content/dam/georgia-power/pdfs/residential-service/residential-rates/TOU-RD-11.pdf"
-                                target="_blank">TOU - Residential Demand (TOU-RD-11)</a></li>
-                    </ul>
-                </div>
-            </div>
-        </details>
+                            <div id="error-message" class="error-message hidden"></div>
 
-        <main>
-            <div class="upload-section" id="drop-zone">
-                <div class="upload-content">
-                    <svg class="upload-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                        <polyline points="17 8 12 3 7 8"></polyline>
-                        <line x1="12" y1="3" x2="12" y2="15"></line>
-                    </svg>
-                    <h3>Drag & Drop Excel File here</h3>
-                    <p>or <span class="browse-link">browse files</span></p>
-                    <p class="file-hint">Supports GA Power usage export (.xlsx)</p>
-                </div>
-                <input type="file" id="file-input" accept=".xlsx,.xls" hidden>
-            </div>
+                            <div id="results-section" class="results-section hidden">
+                                <div class="summary-card">
+                                    <h2>Best Plan For You</h2>
+                                    <div id="best-plan-name" class="best-plan-name">Calculating...</div>
+                                    <div id="best-plan-savings" class="best-plan-savings"></div>
+                                </div>
 
-            <div id="error-message" class="error-message hidden"></div>
+                                <div class="details-grid">
+                                    <div class="plan-card" id="card-tou-reo">
+                                        <h3>TOU-REO</h3>
+                                        <div class="price" id="price-tou-reo">--</div>
+                                        <div class="details">Residential Energy Only</div>
+                                    </div>
+                                    <div class="plan-card" id="card-tou-oa">
+                                        <h3>TOU-OA</h3>
+                                        <div class="price" id="price-tou-oa">--</div>
+                                        <div class="details">Overnight Advantage</div>
+                                    </div>
+                                    <div class="plan-card" id="card-tou-rd">
+                                        <h3>TOU-RD</h3>
+                                        <div class="price" id="price-tou-rd">--</div>
+                                        <div class="details">Residential Demand</div>
+                                    </div>
+                                    <div class="plan-card" id="card-r30">
+                                        <h3>R-30</h3>
+                                        <div class="price" id="price-r30">--</div>
+                                        <div class="details">Standard Residential</div>
+                                    </div>
+                                </div>
 
-            <div id="results-section" class="results-section hidden">
-                <div class="summary-card">
-                    <h2>Best Plan For You</h2>
-                    <div id="best-plan-name" class="best-plan-name">Calculating...</div>
-                    <div id="best-plan-savings" class="best-plan-savings"></div>
+                                <div class="data-stats">
+                                    <h3>Data Analysis</h3>
+                                    <p>Range: <span id="data-range">--</span></p>
+                                    <p>Duration: <span id="data-duration">--</span> days</p>
+                                    <p>Total Usage: <span id="total-usage">--</span> kWh</p>
+                                </div>
+                            </div>
+                            </main>
                 </div>
-
-                <div class="details-grid">
-                    <div class="plan-card" id="card-tou-reo">
-                        <h3>TOU-REO</h3>
-                        <div class="price" id="price-tou-reo">--</div>
-                        <div class="details">Residential Energy Only</div>
-                    </div>
-                    <div class="plan-card" id="card-tou-oa">
-                        <h3>TOU-OA</h3>
-                        <div class="price" id="price-tou-oa">--</div>
-                        <div class="details">Overnight Advantage</div>
-                    </div>
-                    <div class="plan-card" id="card-tou-rd">
-                        <h3>TOU-RD</h3>
-                        <div class="price" id="price-tou-rd">--</div>
-                        <div class="details">Residential Demand</div>
-                    </div>
-                    <div class="plan-card" id="card-r30">
-                        <h3>R-30</h3>
-                        <div class="price" id="price-r30">--</div>
-                        <div class="details">Standard Residential</div>
-                    </div>
-                </div>
-
-                <div class="data-stats">
-                    <h3>Data Analysis</h3>
-                    <p>Range: <span id="data-range">--</span></p>
-                    <p>Duration: <span id="data-duration">--</span> days</p>
-                    <p>Total Usage: <span id="total-usage">--</span> kWh</p>
-                </div>
-            </div>
-        </main>
-    </div>
-    <script src="script.js"></script>
+                <script src="script.js"></script>
 </body>
 
 </html>
