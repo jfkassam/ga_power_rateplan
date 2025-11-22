@@ -295,10 +295,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Display
         displayResults({
-            tou_reo: tou_reo_total,
-            tou_oa: tou_oa_total,
-            tou_rd: tou_rd_total,
-            r30: r30_total,
+            tou_reo: { total: tou_reo_total, breakdown: { fixed: tou_reo_fixed, energy: tou_reo_energy, fcr: total_fcr, tax: tou_reo_total - (tou_reo_fixed + tou_reo_energy + total_fcr) } },
+            tou_oa: { total: tou_oa_total, breakdown: { fixed: tou_oa_fixed, energy: tou_oa_energy, fcr: total_fcr, tax: tou_oa_total - (tou_oa_fixed + tou_oa_energy + total_fcr) } },
+            tou_rd: { total: tou_rd_total, breakdown: { fixed: tou_rd_fixed, energy: tou_rd_energy, demand: total_demand_charge, fcr: total_fcr, tax: tou_rd_total - (tou_rd_fixed + tou_rd_energy + total_demand_charge + total_fcr) } },
+            r30: { total: r30_total, breakdown: { fixed: 0.4603 * billingDays, energy: r30_base_total - (0.4603 * billingDays), fcr: total_fcr, tax: r30_total - (r30_base_total + total_fcr) } },
             stats: {
                 start: records[0].dt,
                 end: records[records.length - 1].dt,
@@ -335,10 +335,10 @@ document.addEventListener('DOMContentLoaded', () => {
         resultsSection.classList.remove('hidden');
 
         const plans = [
-            { id: 'tou-reo', name: 'TOU-REO', cost: results.tou_reo },
-            { id: 'tou-oa', name: 'TOU-OA', cost: results.tou_oa },
-            { id: 'tou-rd', name: 'TOU-RD', cost: results.tou_rd },
-            { id: 'r30', name: 'R-30', cost: results.r30 }
+            { id: 'tou-reo', name: 'TOU-REO', cost: results.tou_reo.total, breakdown: results.tou_reo.breakdown },
+            { id: 'tou-oa', name: 'TOU-OA', cost: results.tou_oa.total, breakdown: results.tou_oa.breakdown },
+            { id: 'tou-rd', name: 'TOU-RD', cost: results.tou_rd.total, breakdown: results.tou_rd.breakdown },
+            { id: 'r30', name: 'R-30', cost: results.r30.total, breakdown: results.r30.breakdown }
         ];
 
         // Sort by cost
@@ -367,15 +367,36 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         plans.forEach(p => {
-            document.getElementById(`price-${p.id}`).textContent = `$${p.cost.toFixed(2)}`;
-            // Highlight best
             const card = document.getElementById(`card-${p.id}`);
+            document.getElementById(`price-${p.id}`).textContent = `$${p.cost.toFixed(2)}`;
+
+            // Highlight best
             if (p.id === best.id) {
                 card.style.borderColor = 'var(--success-color)';
                 card.style.backgroundColor = 'rgba(34, 197, 94, 0.05)';
             } else {
                 card.style.borderColor = 'var(--border-color)';
                 card.style.backgroundColor = 'var(--card-bg)';
+            }
+
+            // Add Breakdown
+            let breakdownHtml = `<div class="cost-breakdown">`;
+            breakdownHtml += `<div class="breakdown-row"><span>Base Energy:</span><span>$${p.breakdown.energy.toFixed(2)}</span></div>`;
+            if (p.breakdown.demand) {
+                breakdownHtml += `<div class="breakdown-row"><span>Demand:</span><span>$${p.breakdown.demand.toFixed(2)}</span></div>`;
+            }
+            breakdownHtml += `<div class="breakdown-row"><span>Fuel Recovery:</span><span>$${p.breakdown.fcr.toFixed(2)}</span></div>`;
+            breakdownHtml += `<div class="breakdown-row"><span>Fixed:</span><span>$${p.breakdown.fixed.toFixed(2)}</span></div>`;
+            breakdownHtml += `<div class="breakdown-row tax-row"><span>Taxes & Fees (12%):</span><span>$${p.breakdown.tax.toFixed(2)}</span></div>`;
+            breakdownHtml += `</div>`;
+
+            // Check if breakdown already exists to avoid duplicates
+            let existingBreakdown = card.querySelector('.cost-breakdown');
+            if (existingBreakdown) {
+                existingBreakdown.innerHTML = breakdownHtml; // Update content? No, innerHTML includes the wrapper.
+                existingBreakdown.outerHTML = breakdownHtml;
+            } else {
+                card.insertAdjacentHTML('beforeend', breakdownHtml);
             }
         });
 
