@@ -383,10 +383,10 @@ document.addEventListener('DOMContentLoaded', () => {
             let breakdownHtml = `<div class="cost-breakdown">`;
             breakdownHtml += `<div class="breakdown-row"><span>Base Energy:</span><span>$${p.breakdown.energy.toFixed(2)}</span></div>`;
             if (p.breakdown.demand) {
-                breakdownHtml += `<div class="breakdown-row"><span>Demand:</span><span>$${p.breakdown.demand.toFixed(2)}</span></div>`;
+                breakdownHtml += `<div class="breakdown-row"><span class="tooltip-label" title="Based on your highest 60-minute usage in a month ($12.21/kW)">Demand ⓘ:</span><span>$${p.breakdown.demand.toFixed(2)}</span></div>`;
             }
             breakdownHtml += `<div class="breakdown-row"><span>Fuel Recovery:</span><span>$${p.breakdown.fcr.toFixed(2)}</span></div>`;
-            breakdownHtml += `<div class="breakdown-row"><span>Fixed:</span><span>$${p.breakdown.fixed.toFixed(2)}</span></div>`;
+            breakdownHtml += `<div class="breakdown-row"><span class="tooltip-label" title="Basic Service Charge ($0.46/day)">Fixed ⓘ:</span><span>$${p.breakdown.fixed.toFixed(2)}</span></div>`;
             breakdownHtml += `<div class="breakdown-row tax-row"><span>Taxes & Fees (12%):</span><span>$${p.breakdown.tax.toFixed(2)}</span></div>`;
             breakdownHtml += `</div>`;
 
