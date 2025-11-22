@@ -188,6 +188,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function calculateCosts(records, durationDays, note) {
+        // Constants for Riders & Taxes
+        const FCR_SUMMER = 0.045876; // ~4.6 cents/kWh (Jun-Sep)
+        const FCR_WINTER = 0.042859; // ~4.3 cents/kWh (Oct-May)
+        const TAX_RATE = 1.12;       // ~12% for NCCR, ECC, Franchise Fee, Sales Tax
+
         // Aggregates
         let agg_tou_reo_on = 0;
         let agg_tou_reo_off = 0;
@@ -196,13 +201,23 @@ document.addEventListener('DOMContentLoaded', () => {
         let agg_tou_oa_super = 0;
 
         // Monthly tracking for R-30 and Demand
-        const monthlyUsage = {}; // "YYYY-MM" -> { total: 0, days: Set(dayStr), maxDemand: 0 }
+        const monthlyUsage = {}; // "YYYY-MM" -> { total: 0, days: Set(dayStr), maxDemand: 0, fcr: 0 }
+
+        // FCR Accumulator
+        let total_fcr = 0;
 
         records.forEach(r => {
             const dt = r.dt;
             const kwh = r.kwh;
-            const monthKey = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
+            const month = dt.getMonth() + 1; // 1-12
+            const monthKey = `${dt.getFullYear()}-${String(month).padStart(2, '0')}`;
             const dayKey = `${monthKey}-${String(dt.getDate()).padStart(2, '0')}`;
+
+            // FCR Calculation
+            const isSummer = month >= 6 && month <= 9;
+            const fcrRate = isSummer ? FCR_SUMMER : FCR_WINTER;
+            const fcrCost = kwh * fcrRate;
+            total_fcr += fcrCost;
 
             // Initialize monthly bucket
             if (!monthlyUsage[monthKey]) {
@@ -235,17 +250,17 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         const billingDays = allDays.size;
 
-        // --- Costs ---
+        // --- Costs (Base + FCR) * Tax ---
 
         // 1. TOU-REO
         const tou_reo_fixed = 0.4603 * billingDays;
         const tou_reo_energy = (agg_tou_reo_on * 0.297868) + (agg_tou_reo_off * 0.076281);
-        const tou_reo_total = tou_reo_fixed + tou_reo_energy;
+        const tou_reo_total = (tou_reo_fixed + tou_reo_energy + total_fcr) * TAX_RATE;
 
         // 2. TOU-OA
         const tou_oa_fixed = 0.4603 * billingDays;
         const tou_oa_energy = (agg_tou_oa_on * 0.297868) + (agg_tou_oa_off * 0.101676) + (agg_tou_oa_super * 0.021859);
-        const tou_oa_total = tou_oa_fixed + tou_oa_energy;
+        const tou_oa_total = (tou_oa_fixed + tou_oa_energy + total_fcr) * TAX_RATE;
 
         // 3. TOU-RD
         const tou_rd_fixed = 0.4603 * billingDays;
@@ -254,10 +269,10 @@ document.addEventListener('DOMContentLoaded', () => {
         Object.values(monthlyUsage).forEach(m => {
             total_demand_charge += m.maxDemand * 12.21;
         });
-        const tou_rd_total = tou_rd_fixed + tou_rd_energy + total_demand_charge;
+        const tou_rd_total = (tou_rd_fixed + tou_rd_energy + total_demand_charge + total_fcr) * TAX_RATE;
 
         // 4. R-30
-        let r30_total = 0;
+        let r30_base_total = 0;
         Object.keys(monthlyUsage).forEach(key => {
             const [year, month] = key.split('-').map(Number); // month is 1-based
             const usage = monthlyUsage[key].total;
@@ -274,8 +289,9 @@ document.addEventListener('DOMContentLoaded', () => {
             } else { // Winter
                 energyCost = usage * 0.080602;
             }
-            r30_total += fixed + energyCost;
+            r30_base_total += fixed + energyCost;
         });
+        const r30_total = (r30_base_total + total_fcr) * TAX_RATE;
 
         // Display
         displayResults({
@@ -387,8 +403,8 @@ document.addEventListener('DOMContentLoaded', () => {
             ratesNote.className = 'subtitle';
             ratesNote.style.fontSize = '0.8rem';
             ratesNote.style.marginTop = '0.5rem';
-            ratesNote.textContent = 'Rates effective Jan 2025';
             document.querySelector('header').appendChild(ratesNote);
         }
+        ratesNote.innerHTML = 'Rates effective Jan 2025.<br>Includes estimated Fuel Cost Recovery (~4.3-4.6¢/kWh) and Taxes/Fees (~12%) to match actual bills.';
     }
 });
